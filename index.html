@@ -1,1 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plane Range Visualizer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+  <style>
+    #map {
+      height: 600px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Plane Range Visualizer</h1>
+  
+  <label for="range">Enter Range (nm or km):</label>
+  <input type="number" id="range" placeholder="Range">
+  <select id="unit">
+    <option value="nm">Nautical Miles (nm)</option>
+    <option value="km">Kilometers (km)</option>
+  </select>
+
+  <label for="airport">Select Starting Airport:</label>
+  <select id="airport"></select>
+
+  <button onclick="showRange()">Show Range</button>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    // Initialize map
+    const map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let airports = [];
+    
+    // Fetch the airport data
+    fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat')
+      .then(response => response.text())
+      .then(data => {
+        airports = parseAirportData(data);
+        populateAirportDropdown(airports);
+      });
+
+    function parseAirportData(data) {
+      return data.split('\n').map(line => {
+        const fields = line.split(',');
+        return {
+          name: fields[1]?.replace(/"/g, ''),
+          latitude: parseFloat(fields[6]),
+          longitude: parseFloat(fields[7])
+        };
+      }).filter(airport => !isNaN(airport.latitude) && !isNaN(airport.longitude));
+    }
+
+    function populateAirportDropdown(airports) {
+      const airportDropdown = document.getElementById('airport');
+      airports.forEach(airport => {
+        const option = document.createElement('option');
+        option.value = `${airport.latitude},${airport.longitude}`;
+        option.textContent = airport.name;
+        airportDropdown.appendChild(option);
+      });
+    }
+
+    function showRange() {
+      const range = parseFloat(document.getElementById('range').value);
+      const unit = document.getElementById('unit').value;
+      const [lat, lng] = document.getElementById('airport').value.split(',').map(Number);
+
+      if (isNaN(range) || isNaN(lat) || isNaN(lng)) {
+        alert('Please enter a valid range and select an airport.');
+        return;
+      }
+
+      const rangeInKm = unit === 'nm' ? range * 1.852 : range;
+      
+      map.setView([lat, lng], 6);
+
+      L.circle([lat, lng], {
+        radius: rangeInKm * 1000, // Leaflet uses meters
+        color: 'blue',
+        fillColor: '#80c1ff',
+        fillOpacity: 0.5
+      }).addTo(map);
+    }
+  </script>
+</body>
+</html>
 
